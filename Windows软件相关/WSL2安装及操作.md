@@ -104,6 +104,14 @@ wsl <command>
 wsl ls -al
 ```
 
+关闭、重启WSL子系统（有时/mnt/c会丢失，重启一下会好）
+
+```cmd
+wsl --shutdown
+wsl
+```
+
+
 ## 4. 文件系统相互访问
 
 WSL中的子系统目录在Windows中虚拟成了一个网络位置。可以通过“运行”窗口中访问 `\\wsl$` 来找到对应文件。如 `\\wsl$\Ubuntu` 对应Ubuntu子系统的根目录。
