@@ -118,6 +118,24 @@ WSL中的子系统目录在Windows中虚拟成了一个网络位置。可以通�
 
 在Linux子系统中，可以从 `/mnt/c` ， `/mnt/d` 等目录访问Windows系统的C盘、D盘等等。
 
-## 5. Docker Desktop安装
+## 5. 从WSL2访问Windows中的端口
+
+首先查看WSL2中宿主机（即Windows机）的IP地址：
+
+```sh
+cat /etc/resolv.conf
+```
+
+其中显示的IP地址就是在WSL2中访问Windows环境的IP地址。
+
+> 例如：Windows环境下的 <http://127.0.0.1:8080> ，这个IP显示是 172.27.112.1，则在WSL2中就应该访问 <http://172.27.112.1:8080>
+
+注意默认的防火墙规则的话，端口访问会被屏蔽掉，需要从Windows中调整设置：
+
+设置 -> Windows安全中心 -> 防火墙和网络保护 -> 高级设置
+
+在其中的“入站规则”中直接新增一条，允许TCP端口（如3306,5432等）被访问。再之后就可以从WSL2环境访问到Windows内端口了。当然需注意软件本身（比如mysql等）还有关于IP绑定或者客户端限制之类的规则，可能也会影响使用。
+
+## 6. Docker Desktop安装
 
 安装过WSL2的 Windows 10 Home 版也可以直接安装 Docker Desktop 了。安装后设置项中会显示使用WSL2后端（Home版中默认选中也不可改）。实际Docker Desktop会新建两个Linux子系统叫`docker-desktop`和`docker-desktop-data`，这两个子系统也可以用上述描述的方法来迁移安装目录，保证足够磁盘空间来运行容器。
