@@ -279,7 +279,7 @@ Data Base Updated
 - **some_server.pem**: 服务器的证书文件，搭建服务器时时需要的
 - **some_server.csr**: 证书请求文件，这个文件已经使用完了，可以删除
 
-### 3.3 导出为PKCS12格式
+### 3.3 导出为PKCS12格式证书库
 
 对部分中间件（如JDK），需要使用PKCS12格式的证书库来存储私钥和证书，也可以通过openssl命令来完成：
 
@@ -288,9 +288,18 @@ cd /root/ca/requests
 openssl pkcs12 -export -in some_server.pem -inkey some_server_key.pem -out some_server.p12 -name app -CAfile ../cacert.pem -caname root -chain
 ```
 
-会要求输入密码，这个密码是这个some_server.p12密钥库文件的密码，可以随意设定。
+会要求输入密码，这个密码是这个some_server.p12密钥库文件的密码，可以随意设定。这个命令将刚才生成的some_server_key.pem和some_server.pem中的私钥与证书，导入了some_server.p12证书库文件，别名为app。
 
 > 注意这个命令设置了服务器密钥/证书的别名为app，并关联了相关的CA证书
+
+### 3.4 导出为JKS格式证书库
+
+> 注：JKS是Java使用的证书库格式。Java8以后已经支持直接使用PKCS12格式证书库了（需要指定证书库类型），所以这步可选。以下命令keytool是JDK提供的，在 $JAVA_HOME/bin 目录下，这里默认当作已经配置好 PATH 环境变量了。另外这个命令只需要从之前生成的p12证书库文件导入，因此只要有p12文件就可以了，不一定需要在ca那台机器上操作，可以放在任意安装了JDK的机器上进行。
+
+```sh
+keytool -importkeystore -srckeystore some_server.p12 -srcstoretype PKCS12 -destkeystore some_server.jks -deststoretype JKS -srcalias app -dest
+alias app
+```
 
 ## 4. 在客户端配置信任ca签发的证书
 
