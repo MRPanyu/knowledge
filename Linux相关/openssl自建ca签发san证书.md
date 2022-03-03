@@ -2,7 +2,9 @@
 
 本文档主要介绍在linux系统（示例使用的是ubuntu，但其他linux发行版应该大致相同）中如何通过openssl工具进行自建ca，并签发san证书。
 
-签发出的证书可以用于https或者其他需要使用ssl的软件，且可以在windows等系统导入信任该ca来实现比较正常的https通讯。
+签发出的证书可以用于https或者其他需要使用ssl的软件，且可以在windows等系统导入信任该ca来实现符合认证的https通讯。
+
+注：以下示例为自建一个名称为 ca.localnetwork.net 的本地ca，并签发一张 *.localnetwork.net 的服务器证书。结合hosts文件的配置，可用于本地关于ssl的各种验证
 
 > SAN(Subject Alternative Name)是 SSL 标准 x509 中定义的一个扩展。使用了 SAN 字段的 SSL 证书，可以扩展此证书支持的域名，使得一个证书可以支持多个不同域名的解析，如 `*.baidu.com`
 
@@ -125,12 +127,12 @@ There are quite a few fields but you can leave some blank
 For some fields there will be a default value,
 If you enter '.', the field will be left blank.
 -----
-Country Name (2 letter code) [AU]:CN
+Country Name (2 letter code) [CN]:CN
 State or Province Name (full name) [Some-State]:Shanghai
 Locality Name (eg, city) []:
-Organization Name (eg, company) [Internet Widgits Pty Ltd]:MyOrg
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:My Org
 Organizational Unit Name (eg, section) []:
-Common Name (e.g. server FQDN or YOUR name) []:myca.localnetwork
+Common Name (e.g. server FQDN or YOUR name) []:ca.localnetwork.net
 Email Address []:
 ```
 
@@ -173,12 +175,12 @@ subjectAltName = @alt_names
 
 [ alt_names ]
 
-DNS.1 = app1.localnetwork
-DNS.2 = app2.localnetwork
-DNS.3 = *.localmachine
+DNS.1 = *.localnetwork.net
+DNS.2 = localnetwork.net
 ```
 
-注意 `[ alt_names ]` 部分的三个就是要创建的证书支持的子域名，当然可以设置不止三个。
+注意 `[ alt_names ]` 部分的就是要创建的证书支持的子域名，可以按绝对域名设置，也可以设置通配符。
+通配符的情况应该是有一定限制，如我试过设置 "*.localnetwork" ，签发的证书Chrome浏览器就不认可，可能是后缀至少需要两段。另外设置通配符的情况最好也新加一个不含通配符的域名。
 
 之后继续在文件中找到 `[ req ]` 部分，找到这行内容（默认应该是注释掉的），放开注释：
 
@@ -209,7 +211,7 @@ cd /root/ca/requests
 openssl req -new -key some_server_key.pem -out some_server.csr
 ```
 
-中间也会要求输入证书信息等内容。Common Name这里用了san当中的一个名称，另外最后两项"A challenge password"和"An optional company name"这里是留空的：
+中间也会要求输入证书信息等内容。Common Name这里用了通配的"*.localnetwork.net"，另外最后两项"A challenge password"和"An optional company name"这里是留空的：
 
 ```txt
 You are about to be asked to enter information that will be incorporated
@@ -224,7 +226,7 @@ State or Province Name (full name) [Some-State]:Shanghai
 Locality Name (eg, city) []:
 Organization Name (eg, company) [Internet Widgits Pty Ltd]:MyOrg
 Organizational Unit Name (eg, section) []:
-Common Name (e.g. server FQDN or YOUR name) []:app1.localnetwork
+Common Name (e.g. server FQDN or YOUR name) []:*.localnetwork.net
 Email Address []:
 
 Please enter the following 'extra' attributes
@@ -244,7 +246,7 @@ openssl ca -in some_server.csr -out some_server.pem -extensions v3_req
 
 ```txt
 Using configuration from /usr/lib/ssl/openssl.cnf
-Enter pass phrase for /home/panyu/ca2/private/cakey.pem:
+Enter pass phrase for /root/ca/private/cakey.pem:
 Check that the request matches the signature
 Signature ok
 Certificate Details:
@@ -256,14 +258,14 @@ Certificate Details:
             countryName               = CN
             stateOrProvinceName       = Shanghai
             organizationName          = MyOrg
-            commonName                = app1.localnetwork
+            commonName                = *.localnetwork.net
         X509v3 extensions:
             X509v3 Basic Constraints:
                 CA:FALSE
             X509v3 Key Usage:
                 Digital Signature, Non Repudiation, Key Encipherment
             X509v3 Subject Alternative Name:
-                DNS:app1.localnetwork, DNS:app2.localnetwork, DNS:*.localmachine
+                DNS:*.localnetwork.net, DNS:localnetwork.net
 Certificate is to be certified until Feb 28 07:53:45 2023 GMT (365 days)
 Sign the certificate? [y/n]:y
 
@@ -297,8 +299,7 @@ openssl pkcs12 -export -in some_server.pem -inkey some_server_key.pem -out some_
 > 注：JKS是Java使用的证书库格式。Java8以后已经支持直接使用PKCS12格式证书库了（需要指定证书库类型），所以这步可选。以下命令keytool是JDK提供的，在 $JAVA_HOME/bin 目录下，这里默认当作已经配置好 PATH 环境变量了。另外这个命令只需要从之前生成的p12证书库文件导入，因此只要有p12文件就可以了，不一定需要在ca那台机器上操作，可以放在任意安装了JDK的机器上进行。
 
 ```sh
-keytool -importkeystore -srckeystore some_server.p12 -srcstoretype PKCS12 -destkeystore some_server.jks -deststoretype JKS -srcalias app -dest
-alias app
+keytool -importkeystore -srckeystore some_server.p12 -srcstoretype PKCS12 -destkeystore some_server.jks -deststoretype JKS -srcalias app -destalias app
 ```
 
 ## 4. 在客户端配置信任ca签发的证书
